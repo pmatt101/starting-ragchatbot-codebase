@@ -15,11 +15,39 @@ document.addEventListener('DOMContentLoaded', () => {
     sendButton = document.getElementById('sendButton');
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
-    
+
+    initTheme();
     setupEventListeners();
     createNewSession();
     loadCourseStats();
 });
+
+// Theme Management
+function initTheme() {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'light') {
+        applyTheme('light');
+    }
+}
+
+function applyTheme(theme) {
+    const toggle = document.getElementById('themeToggle');
+    if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        toggle.setAttribute('aria-label', 'Switch to dark mode');
+        toggle.setAttribute('title', 'Switch to dark mode');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+        toggle.setAttribute('aria-label', 'Switch to light mode');
+        toggle.setAttribute('title', 'Switch to light mode');
+    }
+    localStorage.setItem('theme', theme);
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    applyTheme(current === 'light' ? 'dark' : 'light');
+}
 
 // Event Listeners
 function setupEventListeners() {
@@ -30,6 +58,9 @@ function setupEventListeners() {
     });
     
     
+    // Theme toggle
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
     // New Chat button
     document.getElementById('newChatButton').addEventListener('click', handleNewChat);
 
