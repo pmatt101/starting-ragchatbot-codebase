@@ -101,10 +101,16 @@ class CourseSearchTool(Tool):
             header += "]"
             
             # Track source for the UI
-            source = course_title
+            label = course_title
             if lesson_num is not None:
-                source += f" - Lesson {lesson_num}"
-            sources.append(source)
+                label += f" - Lesson {lesson_num}"
+
+            # Look up lesson link from catalog
+            url = None
+            if lesson_num is not None:
+                url = self.store.get_lesson_link(course_title, lesson_num)
+
+            sources.append({"label": label, "url": url})
             
             formatted.append(f"{header}\n{doc}")
         
@@ -112,6 +118,60 @@ class CourseSearchTool(Tool):
         self.last_sources = sources
         
         return "\n\n".join(formatted)
+
+class CourseOutlineTool(Tool):
+    """Tool for retrieving a course outline (title, link, lesson list)"""
+
+    def __init__(self, vector_store: VectorStore):
+        self.store = vector_store
+
+    def get_tool_definition(self) -> Dict[str, Any]:
+        return {
+            "name": "get_course_outline",
+            "description": "Retrieve the complete outline of a course: its title, course link, and full lesson list with lesson numbers and titles",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "course_name": {
+                        "type": "string",
+                        "description": "Course title to look up (partial or fuzzy matches work)"
+                    }
+                },
+                "required": ["course_name"]
+            }
+        }
+
+    def execute(self, course_name: str) -> str:
+        import json
+
+        # Fuzzy-resolve the course name via the catalog's semantic search
+        resolved_title = self.store._resolve_course_name(course_name)
+        if not resolved_title:
+            return f"No course found matching '{course_name}'"
+
+        # Fetch full metadata by exact ID
+        try:
+            results = self.store.course_catalog.get(ids=[resolved_title])
+            if not results or not results['metadatas']:
+                return f"Course '{resolved_title}' not found in catalog"
+
+            metadata = results['metadatas'][0]
+            title = metadata.get('title', resolved_title)
+            course_link = metadata.get('course_link') or 'Not available'
+            lessons = json.loads(metadata.get('lessons_json', '[]'))
+
+            lines = [
+                f"Course: {title}",
+                f"Course Link: {course_link}",
+                f"Lessons ({len(lessons)} total):"
+            ]
+            for lesson in lessons:
+                lines.append(f"  Lesson {lesson['lesson_number']}: {lesson['lesson_title']}")
+
+            return "\n".join(lines)
+        except Exception as e:
+            return f"Error retrieving course outline: {str(e)}"
+
 
 class ToolManager:
     """Manages available tools for the AI"""

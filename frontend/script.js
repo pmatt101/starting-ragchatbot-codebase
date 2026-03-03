@@ -30,6 +30,9 @@ function setupEventListeners() {
     });
     
     
+    // New Chat button
+    document.getElementById('newChatButton').addEventListener('click', handleNewChat);
+
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
         button.addEventListener('click', (e) => {
@@ -122,10 +125,16 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     let html = `<div class="message-content">${displayContent}</div>`;
     
     if (sources && sources.length > 0) {
+        const sourceHtml = sources.map(s => {
+            if (s.url) {
+                return `<a class="source-chip" href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.label)}</a>`;
+            }
+            return `<span class="source-chip">${escapeHtml(s.label)}</span>`;
+        }).join('');
         html += `
             <details class="sources-collapsible">
                 <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
+                <div class="sources-content">${sourceHtml}</div>
             </details>
         `;
     }
@@ -145,6 +154,14 @@ function escapeHtml(text) {
 }
 
 // Removed removeMessage function - no longer needed since we handle loading differently
+
+async function handleNewChat() {
+    if (currentSessionId) {
+        fetch(`${API_URL}/session/${currentSessionId}`, { method: 'DELETE' })
+            .catch(() => {}); // best-effort; ignore network errors
+    }
+    createNewSession();
+}
 
 async function createNewSession() {
     currentSessionId = null;
